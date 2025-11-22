@@ -21,8 +21,15 @@ class AgentExecutor:
     
     def invoke(self, input_text: str, thread_id: str = "main") -> Dict[str, Any]:
         """Execute the agent synchronously."""
+        # Build system prompt with memory context
+        system_content = self.system_prompt
+        if self.memory:
+            memory_context = self.memory.get_for_llm(include_recent_messages=5)
+            if memory_context and self.memory.conversation.messages:
+                system_content += f"\n\n## SESSION MEMORY\n{memory_context}"
+        
         messages: List[BaseMessage] = [
-            SystemMessage(content=self.system_prompt),
+            SystemMessage(content=system_content),
             HumanMessage(content=input_text)
         ]
         
