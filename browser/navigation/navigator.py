@@ -3,7 +3,7 @@ Navigator module for browser page navigation.
 """
 
 import time
-from langchain_core.tools import tool
+from agent.tools import tool
 
 # Global variable to store the page
 page = None
@@ -18,12 +18,11 @@ def navigate(url) -> str:
     """
     Navigates browser to a specified URL.
     
-    Parameters:
-        url: Address to navigate to 
-            - With protocol: "https://www.example.com"
-            - Domain only: "example.com" (https:// added automatically)
+    Input (url):
+    - Full URL: "https://www.example.com"
+    - Domain only: "example.com" (https:// added automatically)
     
-    Returns: Status message with resulting URL
+    Returns: Status message with the final URL reached.
     """
     try:
         # Clean the URL - remove backticks and other formatting characters
@@ -45,7 +44,7 @@ def navigate(url) -> str:
         # STEP 1: Direct navigation attempt
         try:
             print(f"Trying direct navigation to {url}")
-            page.goto(url, timeout=30000)
+            page.goto(url, timeout=50000)
             current_url = page.url
             
             # Check if navigation was successful
@@ -68,18 +67,10 @@ def go_back() -> str:
     """
     Navigates back to the previous page in browser history.
     
-    This tool simulates clicking the browser's back button by:
-    1. Checking if there is a previous page in history
-    2. Attempting browser navigation with appropriate waiting
-    3. Verifying the navigation was successful
+    Simulates clicking the browser back button. Use when you need to return
+    to a previously visited page.
     
-    Use this tool when:
-    - You need to return to a previous page
-    - After completing a task on a page and wanting to go back
-    - When needing to restart a flow or process
-    
-    Returns:
-        str: Status message indicating successful navigation or error
+    Returns: Status message indicating success or if history is unavailable.
     """
     try:
         # Store current URL to verify navigation

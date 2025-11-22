@@ -12,7 +12,7 @@ The Browser Agent is built using a modular architecture that separates concerns 
 │                      (CLI Commands)                         │
 ├─────────────────────────────────────────────────────────────┤
 │                       Agent Layer                           │
-│                (LangChain + LangGraph)                      │
+│              (Custom LLM + Agentic Loop)                    │
 ├─────────────────────────────────────────────────────────────┤
 │                       Tools Layer                           │
 │                  (Browser Controllers)                      │
@@ -29,11 +29,15 @@ The Browser Agent is built using a modular architecture that separates concerns 
 
 ### 1. Agent Layer (`agent/`)
 
-The AI reasoning and decision-making component built on LangGraph.
+The AI reasoning and decision-making component with custom LLM integration.
 
 **Key Files:**
 
-- `agent.py` - Main agent implementation with workflow orchestration
+- `agent.py` - Main agent initialization and LLM setup
+- `agent_graph.py` - Custom agentic loop executor
+- `llm_providers.py` - LLM provider wrappers (OpenAI, Azure, Anthropic, Groq)
+- `tools.py` - Custom tool decorator and JSON schema generation
+- `messages.py` - Message types for conversation flow
 
 **Responsibilities:**
 
@@ -45,9 +49,9 @@ The AI reasoning and decision-making component built on LangGraph.
 
 **Technology Stack:**
 
-- **LangGraph** - Stateful workflow management
-- **LangChain** - LLM integration and tool binding
-- **Multiple LLM Providers** - OpenAI, Azure, Groq, Anthropic
+- **Custom Agent Executor** - Synchronous agentic loop with tool binding
+- **Direct SDK Integration** - OpenAI, Azure OpenAI, Anthropic, Groq APIs
+- **Custom Tool System** - Tool decorator with JSON schema generation
 
 ### 2. Browser Layer (`browser/`)
 

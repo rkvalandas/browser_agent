@@ -5,7 +5,7 @@ Element controller for browser interactions related to finding and interacting w
 import re
 import time
 import json
-from langchain_core.tools import tool
+from agent.tools import tool
 
 from browser.utils.dom_helpers import _parse_click_target
 from browser.navigation.scroll_manager import scroll
@@ -36,27 +36,19 @@ def initialize(browser_page):
 @tool
 def click(target_description) -> str:
     """
-    Simulates a natural human-like click on any webpage element with precise targeting.
+    Clicks a webpage element using precise targeting.
     
-    This tool intelligently identifies and clicks elements through several methods:
-    1. Using element IDs from analyze_page output (most reliable)
-    2. Using JSON objects with element properties (highly accurate)
-    3. Using natural language descriptions (least precise but most flexible)
+    Input (target_description) - provide as JSON or string:
+    - JSON: {"id": "5", "type": "button", "text": "Submit"} (most precise)
+    - String ID: "5" (from analyze_page output)
+    - Natural language: "Sign in button" (less precise)
     
-    The tool handles scrolling elements into view, automatic retries, and employs
-    multiple click strategies (selector-based, JavaScript, coordinate-based) to ensure 
-    reliable interaction with all types of elements including dynamic content.
+    The tool scrolls elements into view and uses multiple strategies (coordinates, CSS selectors, JavaScript) for reliable clicks on all element types.
     
-    Parameters:
-        target_description: The element to click, specified as one of:
-            - {"id": "5", "type": "button", "text": "Submit"} (most precise)
-            - [3][button]Submit (from analyze_page output)
-            - "Sign in button" (natural language description)
-    
-    Returns: Confirmation message or error details if element couldn't be found/clicked.
+    Returns: Success/error message with element details.
     """
     try:
-        print(f"Attempting visual click for: {target_description}")
+        print(f"Attempting click for: {target_description}")
         
         # Import page_elements from the analyzer
         from browser.analyzers.page_analyzer import page_elements
@@ -305,24 +297,21 @@ def click(target_description) -> str:
 @tool
 def type(value):
     """
-    Clears the currently focused element and types new text using realistic keyboard simulation.
+    Types text into the currently focused input element.
     
-    Important: You must click on an input field, textarea, or editable element BEFORE 
-    using this tool to ensure the element is focused and ready to receive text input.
+    IMPORTANT: Click an input field first before using this tool.
     
-    This tool automatically clears any existing content in the field (using Ctrl+A/Cmd+A) 
-    before typing the new text, ensuring clean input without leftover characters.
-    Works with input fields, textareas, content-editable divs, and search boxes.
+    This tool automatically clears existing content and types the new text. Works with
+    input fields, textareas, editable divs, and search boxes.
     
-    Parameters:
-        value (str): The text to type into the focused element (replaces existing content)
-        
-    Returns:
-        str: Confirmation message with the typed text or error details
-        
-    Example workflow:
-        1. click({"id": "3", "type": "input", "text": "Email"})  # Focus the field first
-        2. type("user@example.com")                              # Clears field and types new text
+    Input (value):
+    - Text string to type (replaces any existing content)
+    
+    Workflow:
+    1. click("{"id": "5", "type": "input", "text": "email"}")  # Focus the element
+    2. type("user@example.com")  # Types into focused field
+    
+    Returns: Confirmation message or error details.
     """
     try:
         print(f"Typing value: {value}")
@@ -379,18 +368,17 @@ def type(value):
 @tool
 def select_option(json_input):
     """
-    Selects an option from a dropdown/select element.
+    Selects an option from a dropdown or select element.
     
-    Parameters:
-        json_input: JSON with target and value info
-        {
-            "id": "5",              # Element ID (required)
-            "type": "dropdown",     # Element type (required)
-            "text": "Country",      # Description (required)
-            "value": "USA"          # Option to select (required)
-        }
-        
-    Returns: Result of the select operation
+    Input (json_input) - JSON object with:
+    - "id": Element ID from analyze_page (optional)
+    - "type": "dropdown" (required)
+    - "text": Dropdown label/description (required)
+    - "value": Option text to select (required)
+    
+    Example: {"type": "dropdown", "text": "Country", "value": "USA"}
+    
+    Returns: Confirmation of selection or error message.
     """
     try:
         # Parse the JSON input

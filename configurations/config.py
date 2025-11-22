@@ -19,8 +19,8 @@ LLM_CONFIG = {
     },
     "azure": {
         "api_key": os.getenv("AZURE_OPENAI_API_KEY"),
-        "model": "gpt-4o",
-        "temperature": 0,
+        "model": "gpt-5-chat",
+        "temperature": 1,
         "max_tokens": 2048,
         "azure_endpoint": os.getenv("AZURE_ENDPOINT"),
         "api_version": "2024-12-01-preview",
@@ -33,9 +33,9 @@ LLM_CONFIG = {
     },
     "anthropic": {
         "api_key": os.getenv("ANTHROPIC_API_KEY"),
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-sonnet-4-20250514",  # Claude Sonnet 4.5 (Preview)
         "temperature": 0,
-        "max_tokens": 2048,
+        "max_tokens": 8192,  # Increased for Claude Sonnet 4.5
     }
 }
 
@@ -77,9 +77,8 @@ PERFORMANCE_MODE = {
     "reduce_transitions": True,  # Reduce CSS transition times
 }
 
-# Browser connection options
+# Fast Chrome Connection - connects to existing Chrome instance
+# Start Chrome with: chrome --remote-debugging-port=9222
 BROWSER_CONNECTION = {
-    "use_existing": True,  # Connect to existing browser
-    "cdp_endpoint": "http://localhost:9222",
-    "fallback_to_new": True  # If connection fails, launch a new browser
+    "cdp_endpoint": "http://localhost:9222"
 }

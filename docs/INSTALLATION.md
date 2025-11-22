@@ -20,6 +20,8 @@ cd browser-agent
 
 ### 2. Install Dependencies
 
+The project uses direct LLM provider SDKs (OpenAI, Anthropic, Groq, Azure) without langchain wrapper dependencies.
+
 #### Option A: Using uv (Recommended)
 
 ```bash

@@ -3,35 +3,27 @@ User interaction utilities for requesting information or permissions from the us
 """
 
 import time
-from langchain_core.tools import tool
+from agent.tools import tool
 
 # This tool doesn't need a page reference since it interacts with the terminal directly
 
 @tool
 def ask_user(json_input) -> str:
     """
-    Requests a single piece of information from the user. Use for one input at a time.
+    Requests a single piece of information from the user.
     
-    Call this tool when you need:
-    - Form field data (usernames, emails, etc.)
-    - Permission to proceed with actions
-    - Decision between options
-    - Human assistance with CAPTCHA/verification
+    Input (json_input) - JSON object with:
+    - "prompt": Question to ask (required)
+    - "type": "text", "password", or "choice" (optional, default: text)
+    - "choices": Array of options for choice type (optional)
+    - "default": Default value if user provides no input (optional)
     
-    Input format:
-    {
-        "prompt": "Question to ask user?",   # Required: Clear, specific question
-        "type": "text|password|choice",      # Optional: Input type (default: text)
-        "choices": ["Option 1", "Option 2"], # Optional: For selection prompts
-        "default": "Default value"           # Optional: Used if no input provided
-    }
+    Examples:
+    - {"prompt": "Enter username"}
+    - {"prompt": "Password", "type": "password"}
+    - {"prompt": "Choose option", "type": "choice", "choices": ["A", "B"]}
     
-    Usage examples:
-    - ask_user('{"prompt": "Enter your username"}')
-    - ask_user('{"prompt": "Enter password", "type": "password"}')
-    - ask_user('{"prompt": "Choose payment", "type": "choice", "choices": ["Credit", "PayPal"]}')
-    
-    Returns the user's response as a string. For multiple fields, make separate calls.
+    Returns: User's response as string. Make separate calls for multiple fields.
     """
     try:
         # Parse input

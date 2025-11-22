@@ -14,7 +14,7 @@ cli/
 ├── core/                       # Core CLI utilities
 │   ├── __init__.py
 │   ├── colors.py              # ANSI color codes and formatting
-│   ├── status.py              # Status bars and progress indicators  
+│   ├── status.py              # Status bars and progress indicators
 │   └── terminal.py            # Terminal utilities and helpers
 ├── utils/                      # System utilities
 │   ├── __init__.py
@@ -39,31 +39,37 @@ cli/
 ## Module Responsibilities
 
 ### core/
+
 - **colors.py**: ANSI color codes, formatting functions
 - **status.py**: Status bars, progress indicators, success/error messages
 - **terminal.py**: Terminal utilities, banner display, user interaction
 
 ### utils/
+
 - **system.py**: System information gathering, environment validation, dependency checking
 
 ### parsers/
+
 - **args.py**: Complete argument parser setup with all commands and options
 
 ### handlers/
+
 - **Individual command files**: Each command has its own dedicated file for better maintainability
 
 ## Usage
 
 ### New Entry Point
+
 ```bash
 # Use the new modular CLI
-python -m cli.main [command] [options]
+uv run main.py [command] [options]
 ```
 
 ### Backward Compatibility
+
 ```bash
 # Legacy compatibility still works
-python -m cli.commands [command] [options]
+uv run cli/commands.py [command] [options]
 ```
 
 ## Benefits
@@ -77,6 +83,7 @@ python -m cli.commands [command] [options]
 ## Import Structure
 
 All modules use absolute imports for better reliability:
+
 ```python
 from cli.core import print_colored, Colors
 from cli.utils import get_system_info

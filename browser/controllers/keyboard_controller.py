@@ -5,7 +5,7 @@ Keyboard controller for browser interactions related to typing and keyboard even
 import re
 import time
 import random
-from langchain_core.tools import tool
+from agent.tools import tool
 
 # Global variable to store the page
 page = None
@@ -20,13 +20,12 @@ def keyboard_action(input_text) -> str:
     """
     Simulates keyboard shortcuts and special keys (not for typing text).
     
-    Parameters:
-        input_text: Key command to execute
-        - Special keys: "enter", "tab", "escape", "up", "down", "f5"
-        - Key combinations: "ctrl+a", "shift+tab", "ctrl+v"
-        - Key sequences: "tab, enter" (comma separated)
+    Input (input_text) - Key commands:
+    - Special keys: "enter", "tab", "escape", "up", "down", "f5"
+    - Combinations: "ctrl+a", "shift+tab", "ctrl+c", "cmd+v"
+    - Sequences: "tab, enter" (comma-separated)
     
-    Returns: Result of the keyboard action
+    Returns: Confirmation of action or error message.
     """
     try:
         # Check if this is a special key command

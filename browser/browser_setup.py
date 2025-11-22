@@ -40,51 +40,88 @@ def inject_cursor_script():
     """
 
 def initialize_browser(options, connection_options=None):
+    """Fast Chrome connection - connects to existing Chrome or launches it automatically.
+    
+    Tries to connect to existing Chrome, if fails, launches Chrome with debugging.
+    """
     playwright = sync_playwright().start()
     
-    # Default connection options if none provided
-    if connection_options is None:
-        connection_options = {
-            "use_existing": True,
-            "cdp_endpoint": "http://localhost:9222",
-            "fallback_to_new": True
-        }
+    # Default: connect to existing Chrome on port 9222
+    cdp_endpoint = "http://localhost:9222"
+    if connection_options and "cdp_endpoint" in connection_options:
+        cdp_endpoint = connection_options["cdp_endpoint"]
     
+    # Try to connect to existing Chrome
     browser = None
-    page = None
-    
-    # Try connecting to existing browser if requested
-    if connection_options.get("use_existing", False):
+    try:
+        print(f"🔗 Connecting to Chrome at {cdp_endpoint}...")
+        browser = playwright.chromium.connect_over_cdp(cdp_endpoint)
+        print("✅ Connected to existing Chrome")
+    except Exception as e:
+        # Connection failed - launch Chrome automatically
+        print(f"⚠️  Chrome not running, launching automatically...")
+        
+        # Launch Chrome with debugging enabled
+        import subprocess
+        import platform
+        import time
+        
+        port = cdp_endpoint.split(":")[-1]
+        system = platform.system()
+        
+        # Determine Chrome executable path
+        if system == "Darwin":  # macOS
+            chrome_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        elif system == "Linux":
+            chrome_path = "google-chrome"
+        elif system == "Windows":
+            chrome_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        else:
+            chrome_path = "google-chrome"
+        
+        # Build Chrome launch arguments
+        chrome_args = [
+            chrome_path,
+            f"--remote-debugging-port={port}",
+            "--user-data-dir=/tmp/chrome-debug-agent",
+            "--no-first-run",
+            "--no-default-browser-check"
+        ]
+        
+        # Add headless flag if configured
+        if options.get("headless", False):
+            chrome_args.append("--headless=new")  # Use new headless mode
+            print("🔇 Launching Chrome in headless mode")
+        
+        # Launch Chrome with remote debugging
         try:
-            print(f"Attempting to connect to existing browser at {connection_options['cdp_endpoint']}...")
-            browser = playwright.chromium.connect_over_cdp(connection_options["cdp_endpoint"])
-            print("Successfully connected to existing Chrome browser")
+            subprocess.Popen(chrome_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
-            # Get the default context or create a new one
-            if (len(browser.contexts) > 0):
-                context = browser.contexts[0]
-            else:
-                context = browser.new_context(viewport=None)
+            # Wait for Chrome to start (max 5 seconds)
+            print("⏳ Waiting for Chrome to start...")
+            for i in range(10):
+                time.sleep(0.5)
+                try:
+                    browser = playwright.chromium.connect_over_cdp(cdp_endpoint)
+                    print("✅ Chrome launched and connected")
+                    break
+                except:
+                    continue
+            
+            if browser is None:
+                raise Exception("Chrome launched but connection failed")
                 
-            # Create a new page in the existing browser
-            page = context.new_page()
-            
-        except Exception as e:
-            print(f"Failed to connect to existing browser: {str(e)}")
-            
-            # Fall back to launching a new browser if configured to do so
-            if not connection_options.get("fallback_to_new", True):
-                print("Fallback disabled. Exiting.")
-                raise e
-                
-            print("Falling back to launching a new browser instance...")
-            browser = None
+        except Exception as launch_error:
+            raise Exception(f"Failed to launch Chrome: {launch_error}")
     
-    # Launch a new browser if needed
-    if browser is None:
-        print(f"Launching new browser with options: {options}")
-        browser = playwright.chromium.launch(**options)
-        page = browser.new_page(viewport=None)
+    # Use existing context or create new one
+    if len(browser.contexts) > 0:
+        context = browser.contexts[0]
+    else:
+        context = browser.new_context(viewport=None)
+    
+    # Get active page or create new one
+    page = context.new_page()
     
     # Inject cursor visualization CSS and JavaScript
     page.add_init_script(inject_cursor_script())
@@ -151,17 +188,11 @@ def initialize_browser(options, connection_options=None):
     
     return playwright, browser, page
 
-def close_browser(playwright, browser, is_connected=False):
+def close_browser(playwright, browser):
+    """Disconnect from Chrome without closing it."""
     try:
-        if is_connected:
-            # If connected to existing browser, just disconnect
-            print("Disconnecting from browser (browser will remain open)")
-            playwright.stop()
-            return "Disconnected from browser successfully"
-        else:
-            # If browser was launched by us, close it
-            browser.close()
-            playwright.stop()
-            return "Browser closed successfully"
+        print("🔌 Disconnecting from Chrome (browser stays open)")
+        playwright.stop()
+        return "Disconnected successfully"
     except Exception as e:
-        return f"Error closing browser: {str(e)}"
+        return f"Error disconnecting: {str(e)}"

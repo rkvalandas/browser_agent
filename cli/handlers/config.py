@@ -5,7 +5,7 @@ Config command implementation.
 import json
 from datetime import datetime
 from cli.core import print_section_header, print_status_bar, print_colored, Colors
-from configurations.config import BROWSER_OPTIONS, BROWSER_CONNECTION, LLM_PROVIDER, CURRENT_LLM_CONFIG
+from configurations.config import BROWSER_OPTIONS, LLM_PROVIDER, CURRENT_LLM_CONFIG
 from cli.utils import get_version
 
 def command_config(args):
@@ -42,14 +42,12 @@ def show_configuration():
         "LLM Provider": (LLM_PROVIDER.upper(), Colors.BRIGHT_BLUE),
         "Model": (CURRENT_LLM_CONFIG.get("model", "Unknown"), Colors.BRIGHT_MAGENTA),
         "Browser Options": (None, None),  # Special handling for dict
-        "Connection Settings": (None, None),  # Special handling for dict
     }
     
     for key, (value, color) in config.items():
-        if key in ["Browser Options", "Connection Settings"]:
+        if key == "Browser Options":
             print_colored(f"  {key}:", Colors.BRIGHT_YELLOW)
-            data = BROWSER_OPTIONS if key == "Browser Options" else BROWSER_CONNECTION
-            for sub_key, sub_value in data.items():
+            for sub_key, sub_value in BROWSER_OPTIONS.items():
                 print_colored(f"    {sub_key}: {sub_value}", Colors.WHITE)
         else:
             print_colored(f"  {key}: ", Colors.BRIGHT_WHITE, end="")
@@ -76,7 +74,6 @@ def export_configuration(filename: str):
     
     config = {
         "browser_options": BROWSER_OPTIONS,
-        "connection_settings": BROWSER_CONNECTION,
         "version": get_version(),
         "export_timestamp": datetime.now().isoformat()
     }

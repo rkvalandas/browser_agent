@@ -4,7 +4,7 @@ Scroll manager for browser page scrolling and position management.
 
 import time
 import random
-from langchain_core.tools import tool
+from agent.tools import tool
 
 # Global variable to store the page
 page = None
@@ -17,27 +17,15 @@ def initialize(browser_page):
 @tool
 def scroll(direction="down") -> str:
     """
-    Scrolls the web page in the specified direction with intelligent boundary detection.
+    Scrolls the web page in the specified direction.
     
-    Automatically scrolls by one viewport height and prevents scrolling beyond page boundaries.
-    Essential for exploring content that extends beyond the current visible area.
+    Input (direction) - Scroll direction:
+    - "down": Scroll down one viewport height (default)
+    - "up": Scroll up one viewport height
+    - "top": Jump to page beginning
+    - "bottom": Jump to page end
     
-    Parameters:
-        direction (str): Scroll direction. Options:
-            • "down" (default): Scroll down one viewport height
-            • "up": Scroll up one viewport height  
-            • "top": Jump to beginning of page
-            • "bottom": Jump to end of page
-    
-    Returns:
-        str: Status message with scroll result and position information.
-             Will notify if already at top/bottom boundaries and cannot scroll further.
-    
-    Examples:
-        scroll("down")     # See more content below
-        scroll("up")       # Review previous content
-        scroll("top")      # Return to page start
-        scroll("bottom")   # Jump to page end
+    Returns: Status message with scroll position and whether boundary reached.
     """
     try:
         # Clean input and handle quoted strings

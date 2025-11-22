@@ -9,7 +9,7 @@ import tempfile
 import json
 from pathlib import Path
 from typing import Dict, List
-from configurations.config import BROWSER_OPTIONS, BROWSER_CONNECTION, LLM_PROVIDER, CURRENT_LLM_CONFIG
+from configurations.config import BROWSER_OPTIONS, LLM_PROVIDER, CURRENT_LLM_CONFIG
 
 def get_version():
     """Get the application version."""
@@ -26,8 +26,7 @@ def get_system_info():
         "debug_profiles": list_debug_profiles(),
         "temp_profiles": list_temp_profiles(),
         "api_key_configured": bool(CURRENT_LLM_CONFIG.get("api_key")),
-        "browser_options": BROWSER_OPTIONS,
-        "connection_config": BROWSER_CONNECTION
+        "browser_options": BROWSER_OPTIONS
     }
 
 def count_chrome_processes():
@@ -79,12 +78,6 @@ def check_dependencies():
         deps["playwright"] = getattr(playwright, '__version__', 'unknown')
     except ImportError:
         deps["playwright"] = "❌ Not installed"
-    
-    try:
-        import langchain
-        deps["langchain"] = getattr(langchain, '__version__', 'unknown')
-    except ImportError:
-        deps["langchain"] = "❌ Not installed"
     
     try:
         import openai

@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from cli.core import print_section_header, print_status_bar, print_colored, Colors
 from cli.utils import get_system_info, count_chrome_processes, check_dependencies, list_debug_profiles, list_temp_profiles
-from configurations.config import BROWSER_OPTIONS, BROWSER_CONNECTION, CURRENT_LLM_CONFIG
+from configurations.config import BROWSER_OPTIONS, CURRENT_LLM_CONFIG
 
 def command_diagnose(args):
     """Run system diagnostics."""
@@ -123,10 +123,6 @@ def diagnose_configuration():
     
     channel = BROWSER_OPTIONS.get('channel', 'unknown')
     print_colored(f"  • Browser channel: {channel}", Colors.BRIGHT_CYAN)
-    
-    connection_mode = 'Existing' if BROWSER_CONNECTION.get('use_existing') else 'New'
-    connection_color = Colors.BRIGHT_MAGENTA if connection_mode == 'Existing' else Colors.BRIGHT_BLUE
-    print_colored(f"  • Connection mode: {connection_mode}", connection_color)
 
 def diagnose_network():
     """Diagnose network connectivity with colors."""

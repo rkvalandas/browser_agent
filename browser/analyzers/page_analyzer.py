@@ -3,7 +3,7 @@ Page analyzer for examining web page content and structure.
 """
 
 import time
-from langchain_core.tools import tool
+from agent.tools import tool
 
 # Global variables
 page = None
@@ -17,15 +17,18 @@ def initialize(browser_page):
 @tool
 def analyze_page():
     """
-    Extracts page content and interactive elements with ID references.
+    Analyzes the current page and returns all visible content and interactive elements.
     
-    Scans DOM for visible text and elements (buttons, links, inputs), 
-    including modals/popups. Returns elements in [ID][type][cssSelector]Text format
-    and creates internal map for precise targeting.
+    Extracts buttons, links, inputs, text content with unique IDs for each element.
+    Use this tool to see what's on the page before interacting with it.
     
-    Use after navigation/clicks or when page state changes.
+    Returns: Formatted list of page elements with:
+    - Element IDs (for precise targeting)
+    - Element types (button, link, input, etc.)
+    - Visible text and descriptions
+    - Position information
     
-    Returns: Formatted page content with element IDs and CSS selectors.
+    Run after navigation or page changes to refresh element information.
     """
     global page_elements
     try:

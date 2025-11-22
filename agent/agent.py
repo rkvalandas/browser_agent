@@ -1,26 +1,15 @@
-from typing import Annotated
 import os
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from typing_extensions import TypedDict
+from agent.messages import HumanMessage, SystemMessage
+from agent.llm_providers import ChatGroq, ChatOpenAI, AzureChatOpenAI, ChatAnthropic
+from agent.agent_graph import AgentExecutor
 from browser.controllers.browser_controller import get_browser_tools
 from configurations.config import LLM_PROVIDER, CURRENT_LLM_CONFIG
-
-from langgraph.graph import StateGraph, START
-from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode, tools_condition
-
-class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]
     
 def create_agent():
     """Create an agent using the configured LLM provider."""
     config = CURRENT_LLM_CONFIG
     
-    # Initialize LLM based on selected provider
     if LLM_PROVIDER == "openai":
         llm = ChatOpenAI(
             model=config["model"],
@@ -57,171 +46,62 @@ def create_agent():
     
     print(f"Initialized {LLM_PROVIDER} LLM with model: {config['model']}")
 
-    # Bind tools to the LLM
-    tools = get_browser_tools();
-    llm_with_tools = llm.bind_tools(tools)
+    tools = get_browser_tools()
+    llm = llm.bind_tools(tools)
     
-    # Create the intelligent system prompt
-    system_prompt = """You are browser controller. Execute complex web automation tasks with intelligent analysis and adaptive execution. NEVER stop until the goal is fully achieved and verified.
+    system_prompt = """You are an expert browser automation agent. Your goal is to complete tasks autonomously and efficiently without unnecessary questions.
 
-CORE PRINCIPLES
-- Goal-first: identify success criteria before acting
-- Analyze before and after actions: use analyze_page() to understand the current viewport and to verify changes
-- Click before type: always focus inputs before typing
-- Be systematic: scroll to explore, re-analyze when state changes
-- Evidence-based completion: only finish after confirming success on the page
+## CORE WORKFLOW
+1. **Analyze** → Use analyze_page() to inspect current viewport
+2. **Execute** → Perform actions decisively (click, type, navigate, scroll)
+3. **Verify** → Use analyze_page() after major changes to confirm success
+4. **Adapt** → If blocked, re-analyze and try alternatives before asking
+5. **Complete** → Report success with concrete evidence from the page
 
-AVAILABLE TOOLS (use via tool calls; do not invent tools)
-- analyze_page(): Inspect current viewport (ids, types, text, positions). Use after navigation, clicks, typing, scrolling, or any state change.
-- navigate(url)
-- go_back()
-- scroll(direction): "down" | "up" | "top" | "bottom" (watch for "Already at bottom/top")
-- click(target): By element id object, natural language, or direct reference
-- type(text): Only after focusing an input with click()
-- select_option(json): {"id": "...", "type": "dropdown", "text": "Label", "value": "Option"}
-- keyboard_action(key): "Enter" | "Tab" | "Escape" | "Ctrl+A"
-- ask_user(json): {"prompt": "Question?", "type": "text/password/choice", "choices": [...], "default": "..."} — request a single value when required
+## AVAILABLE TOOLS
+• analyze_page() - Inspect current viewport (element IDs, types, text, positions). Use frequently.
+• navigate(url) - Go to a URL
+• go_back() - Navigate back
+• scroll(direction) - "down", "up", "top", "bottom"
+• click(json/string) - Click element: {"id": "5", "type": "button", "text": "Submit"}
+• type(text) - Type text (MUST click input field first)
+• select_option({"id": "...", "type": "dropdown", "text": "Label", "value": "Option"})
+• keyboard_action(key) - "Enter", "Tab", "Escape", "Ctrl+A", etc.
+• ask_user({"prompt": "...", "type": "text/password/choice", "choices": [...], "default": "..."}
 
-EXECUTION LOOP
-1) Analyze goal → define explicit success criteria and plan minimal steps
-2) Recon → analyze_page()
-3) Act → choose the next tool (common patterns: click → type → keyboard_action("Enter"))
-4) Verify → analyze_page() to confirm intended effect
-5) Explore as needed → scroll('down') progressively; stop when boundaries are reached
-6) Recovery → if an action fails, re-analyze and try an alternate locator/strategy
-7) Missing info → use ask_user() with a clear, single-value prompt
-8) Repeat until success is verified or you determine it’s impossible with reasons
+## AUTONOMOUS EXECUTION RULES
+✓ Make reasonable assumptions when targets are ambiguous (use best match)
+✓ Click obvious elements without asking (buttons, links, fields)
+✓ Fill forms field-by-field automatically when data is available
+✓ Try alternative selectors if first attempt fails (ID → text → position)
+✓ Scroll and explore pages autonomously to find targets
+✓ Use analyze_page() strategically (after navigation, form submission, errors)
 
-TARGETING & FORMS
-- Prefer stable element references (id/type/text). If click fails, re-analyze and try alternative targets.
-- For forms: click input → type value → submit (button click or keyboard_action("Enter")). Use Tab to move between fields. Use select_option for dropdowns.
 
-SUCCESS VERIFICATION
-- After meaningful actions, analyze_page() and quote concrete on-page evidence (e.g., confirmation text, page title, success banners)
-- Final message must include: "Goal completed successfully — Evidence: <quote>"
+## WHEN TO USE ask_user()
+ONLY use ask_user() for:
+• Credentials (username, password) that aren't provided
+• Payment/purchase confirmations (money involved)
+• Destructive actions (delete, permanent changes)
+• Ambiguous choices with significant consequences
+• Data you genuinely don't have and can't infer
 
-COMMUNICATION
-- Keep reasoning concise and actionable
-- Describe each tool use briefly and why
-- If blocked (login walls, captcha, paywall) or impossible, explain clearly and ask_user() for needed info when appropriate
+## EXECUTION EXAMPLES
+✓ GOOD: "Navigating to example.com → Analyzing page → Clicking 'Sign In' button → Clicking email field → Typing user@email.com → Clicking submit"
+✗ BAD: "I see a Sign In button. Should I click it?" (Just click it!)
+✗ BAD: "I found two search boxes. Which one?" (Pick the most prominent one)
+✗ BAD: "Should I scroll down to find more?" (Yes, scroll autonomously)
+
+## COMPLETION
+Report: "✓ Task completed successfully - Evidence: [quote specific text/result from page]"
+Only declare success when verified with actual page content.
+
+## COMMUNICATION
+• Be decisive and action-oriented
+• If truly blocked (login required, error), explain and use ask_user()
+
+Remember: Act autonomously. Execute multiple steps. Ask only when critical. Verify results. Complete efficiently.
 """
-
-    # Create synchronous node for chatbot
-    def chatbot(state: AgentState):
-        # If no message exists, return no change to state
-        if not state.get("messages", []):
-            return {"messages": []}
-            
-        # Process with LLM synchronously
-        response = llm_with_tools.invoke(state["messages"])
-        return {"messages": [response]}
-
-    # Set up the graph with custom tool handling
-    graph_builder = StateGraph(AgentState)
     
-    # Add nodes
-    graph_builder.add_node("chatbot", chatbot)
-    
-    # Custom tool execution node
-    def tool_executor(state: AgentState):
-        """Execute tools synchronously without LangGraph's ToolNode."""
-        last_message = state["messages"][-1]
-        
-        # Check if the last message has tool calls
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            tool_messages = []
-            
-            for tool_call in last_message.tool_calls:
-                tool_name = tool_call["name"]
-                tool_args = tool_call["args"]
-                tool_id = tool_call["id"]
-                
-                # Find and execute the tool
-                tool_result = None
-                for tool in tools:
-                    if tool.name == tool_name:
-                        try:
-                            # Execute tool synchronously
-                            tool_result = tool.invoke(tool_args)
-                        except Exception as e:
-                            tool_result = f"Error executing {tool_name}: {str(e)}"
-                        break
-                
-                if tool_result is None:
-                    tool_result = f"Tool {tool_name} not found"
-                
-                # Create tool message
-                from langchain_core.messages import ToolMessage
-                tool_messages.append(ToolMessage(
-                    content=str(tool_result),
-                    tool_call_id=tool_id
-                ))
-            
-            return {"messages": tool_messages}
-        
-        return {"messages": []}
-    
-    graph_builder.add_node("tools", tool_executor)
-    
-    # Add edges
-    graph_builder.add_edge(START, "chatbot")
-    graph_builder.add_conditional_edges(
-        "chatbot",
-        tools_condition,
-    )
-    graph_builder.add_edge("tools", "chatbot")
-    
-    # Compile the graph (synchronous)
-    from langgraph.checkpoint.memory import MemorySaver
-    memory = MemorySaver()
-    graph = graph_builder.compile(checkpointer=memory)
-    
-    # Wrap the graph with a synchronous interface
-    class LangGraphAgent:
-        def __init__(self, graph):
-            self.graph = graph
-            
-        def invoke(self, input_text, thread_id="main"):
-            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
-            
-            # Start with system message and user input
-            state = {
-                "messages": [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=input_text)
-                ]
-            }
-            
-            # Run the graph synchronously
-            result = self.graph.invoke(state, config)
-            
-            # Format the result
-            output = result["messages"][-1].content
-            
-            # Create a result
-            return {
-                "input": input_text,
-                "output": output,
-                "messages": result["messages"]
-            }
-        
-        def stream(self, input_text, thread_id="main"):
-            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
-            
-            # Start with system message and user input
-            state = {
-                "messages": [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=input_text)
-                ]
-            }
-            
-            # Stream the graph execution synchronously
-            results = []
-            for event in self.graph.stream(state, config, stream_mode="updates"):
-                if "messages" in event:
-                    event["messages"][-1].pretty_print()
-                    results.append(event)
-            return results
-    
-    return LangGraphAgent(graph)
+    executor = AgentExecutor(llm=llm, tools=tools, system_prompt=system_prompt, max_iterations=50)
+    return executor

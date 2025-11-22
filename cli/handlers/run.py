@@ -12,7 +12,6 @@ from argparse import Namespace
 from cli.core import print_status_bar, print_section_header, print_colored, Colors, setup_terminal, reset_cursor, colorize, print_agent_response
 from cli.utils import validate_environment, get_version
 from configurations.config import BROWSER_OPTIONS, BROWSER_CONNECTION
-from cli.chrome_launcher import launch_chrome_with_debugging
 
 def command_run(args):
     """Execute the main browser agent with enhanced error handling and status reporting."""
@@ -33,7 +32,9 @@ def command_run(args):
     # Configure browser options
     if hasattr(args, 'headless') and args.headless:
         BROWSER_OPTIONS["headless"] = True
-        print_status_bar("Running in headless mode", "INFO")
+        print_status_bar("Running in headless mode (CLI flag)", "INFO")
+    elif BROWSER_OPTIONS.get("headless", False):
+        print_status_bar("Running in headless mode (from .env)", "INFO")
     
     # Create the agent with enhanced error handling
     print_status_bar("Creating AI agent with tools...", "PROGRESS")
@@ -47,57 +48,15 @@ def command_run(args):
             traceback.print_exc()
         return False
 
-    # Handle Chrome launching with enhanced options
-    if BROWSER_CONNECTION.get("use_existing", False):
-        port = getattr(args, 'port', 9222)
-        if "cdp_endpoint" in BROWSER_CONNECTION:
-            try:
-                endpoint = BROWSER_CONNECTION["cdp_endpoint"]
-                port = int(endpoint.split(":")[-1])
-            except (ValueError, IndexError):
-                pass
-        
-        print_status_bar(f"Connecting to Chrome debug port {port}...", "PROGRESS")
-        
-        # Determine profile and mode settings
-        use_default_profile = (args.profile == "default")  # Use default profile if specified
-        launch_mode = getattr(args, 'mode', None)
-        
-        # Enhanced Chrome launching with timeout and retries
-        max_retries = getattr(args, 'max_retries', 3)
-        timeout = getattr(args, 'timeout', 30)
-        
-        for attempt in range(max_retries):
-            print_status_bar(f"Chrome launch attempt {attempt + 1}/{max_retries}...", "PROGRESS")
-            
-            chrome_launched = launch_chrome_with_debugging(
-                port=port, 
-                use_default_profile=use_default_profile,
-                mode=launch_mode
-            )
-            
-            if chrome_launched:
-                print_status_bar("Chrome launched successfully!", "SUCCESS")
-                break
-            elif attempt < max_retries - 1:
-                print_status_bar(f"Chrome launch failed, retrying in 1 second...", "WARNING")
-                time.sleep(1)  # Reduced retry delay
-            else:
-                print_status_bar("All Chrome launch attempts failed", "ERROR")
-                if not BROWSER_CONNECTION.get("fallback_to_new", True):
-                    print_status_bar("Fallback to new browser is disabled", "ERROR")
-                    return False
-    
-    # Initialize browser with enhanced error handling
-    print_status_bar("Initializing browser connection...", "PROGRESS")
+    # Connect to Chrome - fast and seamless (auto-launches if needed)
+    print_status_bar("Initializing Chrome connection...", "PROGRESS")
     try:
         playwright, browser, page = initialize_browser(BROWSER_OPTIONS, BROWSER_CONNECTION)
-        print_status_bar("Browser initialized successfully!", "SUCCESS")
+        print_status_bar("Chrome ready!", "SUCCESS")
     except Exception as e:
-        print_status_bar(f"Failed to initialize browser: {str(e)}", "ERROR")
+        print_status_bar(f"Failed to initialize Chrome: {str(e)}", "ERROR")
+        print_colored("💡 Chrome connection failed. Check if Chrome is installed.", Colors.BRIGHT_YELLOW)
         return False
-
-    using_connected_browser = BROWSER_CONNECTION.get("use_existing", False)
     
     print_status_bar("Setting up browser controller...", "PROGRESS")
     try:
@@ -224,20 +183,17 @@ def command_run(args):
     # Enhanced cleanup with options
     print_section_header("Cleanup")
     if 'playwright' in locals() and 'browser' in locals():
-        if using_connected_browser:
-            close_input = input("Disconnect from browser? (y/N): ")
-        else:
-            close_input = input("Close browser? (y/N): ")
+        close_input = input("Disconnect from Chrome? (y/N): ")
             
         if close_input.lower() in ['y', 'yes']:
-            print_status_bar("Cleaning up browser resources...", "PROGRESS")
+            print_status_bar("Disconnecting...", "PROGRESS")
             try:
-                close_browser(playwright, browser, is_connected=using_connected_browser)
-                print_status_bar("Browser cleanup completed", "SUCCESS")
+                close_browser(playwright, browser)
+                print_status_bar("Disconnected - Chrome remains open", "SUCCESS")
             except Exception as e:
-                print_status_bar(f"Cleanup warning: {str(e)}", "WARNING")
+                print_status_bar(f"Disconnect warning: {str(e)}", "WARNING")
         else:
-            print_status_bar("Browser left open for manual control", "INFO")
+            print_status_bar("Connection maintained - Chrome stays open", "INFO")
     
     return True
 
