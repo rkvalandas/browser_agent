@@ -3,6 +3,7 @@ import os
 from agent.messages import HumanMessage, SystemMessage
 from agent.llm_providers import ChatGroq, ChatOpenAI, AzureChatOpenAI, ChatAnthropic
 from agent.agent_graph import AgentExecutor
+from agent.memory import SessionMemory
 from browser.controllers.browser_controller import get_browser_tools
 from configurations.config import LLM_PROVIDER, CURRENT_LLM_CONFIG
     
@@ -104,4 +105,8 @@ Remember: Act autonomously. Execute multiple steps. Ask only when critical. Veri
 """
     
     executor = AgentExecutor(llm=llm, tools=tools, system_prompt=system_prompt, max_iterations=50)
+    
+    # Add memory to the executor
+    executor.memory = SessionMemory()
+    
     return executor

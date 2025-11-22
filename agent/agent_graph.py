@@ -16,6 +16,7 @@ class AgentExecutor:
         self.system_prompt = system_prompt
         self.max_iterations = max_iterations
         self.tool_map = {tool.name: tool for tool in tools}
+        self.memory = None
         self.llm.bind_tools(tools)
     
     def invoke(self, input_text: str, thread_id: str = "main") -> Dict[str, Any]:
@@ -32,7 +33,19 @@ class AgentExecutor:
             response = self.llm.invoke(messages)
             messages.append(response)
             
+            # Store in memory if available
+            if self.memory:
+                self.memory.conversation.add_base_message(response)
+            
             if not response.tool_calls:
+                # Store final result in memory
+                if self.memory:
+                    self.memory.add_exchange(
+                        human_input=input_text,
+                        ai_response=response.content,
+                        task_result={"success": True}
+                    )
+                
                 return {
                     "input": input_text,
                     "output": response.content,
@@ -67,9 +80,17 @@ class AgentExecutor:
                     messages.append(tool_message)
         
         # Max iterations reached
+        final_message = f"Max iterations ({self.max_iterations}) reached without completion"
+        if self.memory:
+            self.memory.add_exchange(
+                human_input=input_text,
+                ai_response=final_message,
+                task_result={"success": False}
+            )
+        
         return {
             "input": input_text,
-            "output": f"Max iterations ({self.max_iterations}) reached without completion",
+            "output": final_message,
             "messages": messages
         }
     
